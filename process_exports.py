@@ -57,7 +57,18 @@ def process(module):
                     whitespace_token_types = ('SPACE','SPACEBR',)
                 else:
                     whitespace_token_types = ('SPACE',)
-                return next_skipping_by_condition(index_current,lambda token: token.kind in whitespace_token_types)
+                return next_skipping_by_condition(index_current, lambda token: token.kind in whitespace_token_types)
+
+            def next_skip_to_func_after_async(index_current):
+                i = index_current
+                i = next_skipping_by_condition(index_current, lambda token: token.kind in ('SPACE','SPACEBR','COMMENT',))
+                if i>len(tokens)-1:
+                    raise ProcessModuleError(f'Unexpected end of string: expected "function" after "async"')
+                if tokens[i].value=='function':
+                    return i
+                else:
+                    raise ProcessModuleError(f'Unexpected end of string: expected "function" after "async"')
+
 
             i = index_current
             i = next_non_zero(i+1)
@@ -67,8 +78,10 @@ def process(module):
 
             if tokens[i].value=='default':
                 i = next_non_zero(i+1)
-                if tokens[i].value in ('function','class',):
+                if tokens[i].value in ('function','class','async',):
                     index_current = i
+                    if tokens[i].value in ('async',):
+                        i = next_skip_to_func_after_async(i+1)
                     i = next_non_zero(i+1)
                     if i>len(tokens)-1:
                         raise ProcessModuleError(f'Unexpected end of string after "export"')
@@ -125,8 +138,10 @@ def process(module):
                 index_current = i+1
                 explicit_exports.append(exports)
                 continue
-            elif tokens[i].value in ('function','const','var','let','class',):
+            elif tokens[i].value in ('async','function','const','var','let','class',):
                 index_current = i
+                if tokens[i].value in ('async',):
+                    i = next_skip_to_func_after_async(i+1)
                 i = next_non_zero(i+1)
                 if i>len(tokens)-1:
                     raise ProcessModuleError(f'Unexpected end of string after "export"')

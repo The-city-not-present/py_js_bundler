@@ -113,11 +113,11 @@ def process(module,modules_dics):
                     default_name = matches[1]
                     source_updated += '\n' + f'const {default_name} = {imported_module.name}.default;\n' + ';\n\n'
                 elif re.match(r'\s*\{\s*([^\n]*?)\s*\}\s*$',specs):
-                    matches = re.match(r'\s*\{\s*([^\n]*?)\s*\}\s*$',specs)
+                    matches = re.match(r'\s*(\{\s*[^\n]*?\s*\})\s*$',specs)
                     specs_named = matches[1]
                     source_updated += '\n' + f'const {specs_named} = {imported_module.name};' + '\n'
                 elif re.match(r'\s*(\w+(?:\s+\bas\b\s*\b\w+)?)\s*,\s*\{\s*([^\n]*?)\s*\}\s*$',specs):
-                    matches = re.match(r'\s*(\w+(?:\s+\bas\b\s*\b\w+)?)\s*,\s*\{\s*([^\n]*?)\s*\}\s*$',specs)
+                    matches = re.match(r'\s*(\w+(?:\s+\bas\b\s*\b\w+)?)\s*,\s*(\{\s*[^\n]*?\s*\})\s*$',specs)
                     specs_default = matches[1]
                     specs_named = matches[2]
                     if specs_default:
