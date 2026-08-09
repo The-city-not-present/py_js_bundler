@@ -59,6 +59,11 @@ def process(module,modules_dics):
                 assert quote in ('\'','"','`',)
                 assert name_quoted[-1]==quote
                 name = name_quoted[1:-1].replace('\\'+quote,quote)
+                if not name.startswith('./') and not name.startswith('../'):
+                    print(f'For DEBUGGING]: path is not relative, skipping') # debug
+                    source_updated += tokens[index_current]
+                    index_current += 1
+                    continue
                 import_module_path = resolve_import(module.path,name)
                 imported_module = modules_dics.get(import_module_path)
                 if not imported_module:
@@ -97,6 +102,11 @@ def process(module,modules_dics):
                 assert quote in ('\'','"','`',)
                 assert name_quoted[-1]==quote
                 name = name_quoted[1:-1].replace('\\'+quote,quote)
+                if not name.startswith('./') and not name.startswith('../'):
+                    print(f'For DEBUGGING]: path is not relative, skipping') # debug
+                    source_updated += tokens[index_current]
+                    index_current += 1
+                    continue
                 import_module_path = resolve_import(module.path,name)
                 imported_module = modules_dics.get(import_module_path)
                 if not imported_module:

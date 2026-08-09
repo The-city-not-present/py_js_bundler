@@ -23,7 +23,7 @@ class Module:
 
 def resolve_import(base: Path, target: str):
     """Based on module name, returns path to file"""
-    if not target.startswith('./'):
+    if not target.startswith('./') and not target.startswith('../'):
         raise RuntimeError(
             f'Only relative imports are supported ({target})'
         )

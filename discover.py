@@ -44,7 +44,7 @@ def process(file):
         for dep in RE_IMPORT_STATEMENT.finditer(source):
             dep_module = dep.group(1)
             print(f'[DEBUG-discovery]: found: {dep_module}') # debug
-            if not dep_module.startswith('./'):
+            if not dep_module.startswith('./') and not dep_module.startswith('../'):
                 print(f'[DEBUG-discovery]: path is not relative, skipping') # debug
                 continue
             dep_module_path = resolve_import(this_module_path, dep_module)
