@@ -119,14 +119,17 @@ def process(module,modules_dics):
                 index_current = i+1
 
                 if re.match(r'^\s*(\w+)\s*$',specs):
+                    # import somethingA from './somewhere';
                     matches = re.match(r'^\s*(\w+)\s*$',specs)
                     default_name = matches[1]
                     source_updated += '\n' + f'const {default_name} = {imported_module.name}.default;\n' + ';\n\n'
                 elif re.match(r'\s*\{\s*([^\n]*?)\s*\}\s*$',specs):
+                    # import { somethingA, somethingB } from './somewhere';
                     matches = re.match(r'\s*(\{\s*[^\n]*?\s*\})\s*$',specs)
                     specs_named = matches[1]
                     source_updated += '\n' + f'const {specs_named} = {imported_module.name};' + '\n'
                 elif re.match(r'\s*(\w+(?:\s+\bas\b\s*\b\w+)?)\s*,\s*\{\s*([^\n]*?)\s*\}\s*$',specs):
+                    # import somethingA, { somethingB, somethingC } from './somewhere';
                     matches = re.match(r'\s*(\w+(?:\s+\bas\b\s*\b\w+)?)\s*,\s*(\{\s*[^\n]*?\s*\})\s*$',specs)
                     specs_default = matches[1]
                     specs_named = matches[2]
@@ -145,7 +148,7 @@ def process(module,modules_dics):
                         source_updated += '\n' + f'const {specs_default_alias if specs_default_alias else default_name} = {imported_module.name}.default;\n' + ';\n\n'
                     source_updated += '\n' + f'const {specs_named} = {imported_module.name};' + '\n'
                 else:
-                    raise ProcessModuleError(f'Not matching') # assert
+                    raise ProcessModuleError(f'Error parsing imports statement: expected "import \'./somewhere\'", or "import {{ somethingA, somethingB }} from \'./somewhere\'", or "import somethingA from \'./somewhere\'", or "import somethingA, {{ somethingB, somethingC }} from \'./somewhere\'", but got "import" that does not match any of those: "{specs}"') # assert
 
                 source_updated += '\n'
                 continue

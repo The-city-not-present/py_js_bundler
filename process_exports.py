@@ -99,7 +99,7 @@ def process(module):
                     default_exports.append(name)
                     i = next_non_zero(i+1,including_br=False)
                     if not ( i>len(tokens)-1 or tokens[i].kind=='SPACEBR' or tokens[i].value==';' ):
-                        raise ProcessModuleError(f'export default IDENT, and then expected EOD, newline, or semicolon, got "{name.value}"')
+                        raise ProcessModuleError(f'export default IDENT, and then expected EOD, newline, or semicolon, got "{name}"')
                     index_current = i+1
                     continue
             elif tokens[i].value=='{':
