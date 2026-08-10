@@ -23,10 +23,12 @@ class Module:
 
 def resolve_import(base: Path, target: str):
     """Based on module name, returns path to file"""
-    if not target.startswith('./') and not target.startswith('../'):
-        raise RuntimeError(
-            f'Only relative imports are supported ({target})'
-        )
+    # if not target.startswith('./') and not target.startswith('../'):
+    #     raise RuntimeError(
+    #         f'Only relative imports are supported ({target})'
+    #     )
+    if f'{base}'.startswith('global:'):
+        return f'{base}{target}'
     path = (base.parent / target).resolve()
     if path.suffix == '':
         path = path.with_suffix('.js')

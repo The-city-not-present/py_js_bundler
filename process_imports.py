@@ -4,6 +4,7 @@ from pathlib import Path
 
 from .common_defs import resolve_import
 from .tokenize_js_scripts import process as tokenize_js
+from .helper_classify_module_type import classify_module_specifier, Type as ModuleType
 
 
 
@@ -15,7 +16,7 @@ class ProcessImportsError(Exception):
     def __init__(self, msg, *args, **kwargs):
         super().__init__(f"Error processing imports: {msg}", *args, **kwargs)
 
-def process(module,modules_dics):
+def process(module,modules_dicts):
 
     class ProcessModuleError(ProcessImportsError):
         """Raised when imports processing fails."""
@@ -26,6 +27,8 @@ def process(module,modules_dics):
     source = module.source
 
     source_updated = ''
+    global_imports = {}
+
     tokens = tokenize_js(source)
     index_current = 0
     while index_current<len(tokens):
@@ -50,7 +53,7 @@ def process(module,modules_dics):
             i = next_non_zero(i+1)
 
             if i>len(tokens)-1:
-                raise ProcessModuleError(f'Unexpected end of string after "export"')
+                raise ProcessModuleError(f'Unexpected end of string after "import"')
 
             if tokens[i].kind=='STRING':
                 # import './lib';
@@ -59,18 +62,29 @@ def process(module,modules_dics):
                 assert quote in ('\'','"','`',)
                 assert name_quoted[-1]==quote
                 name = name_quoted[1:-1].replace('\\'+quote,quote)
-                if not name.startswith('./') and not name.startswith('../'):
-                    print(f'For DEBUGGING]: path is not relative, skipping') # debug
-                    source_updated += tokens[index_current]
-                    index_current += 1
-                    continue
-                import_module_path = resolve_import(module.path,name)
-                imported_module = modules_dics.get(import_module_path)
+                # # if not name.startswith('./') and not name.startswith('../'):
+                # if classify_module_specifier(name) in (ModuleType.BARE,):
+                #     # source_updated += tokens[index_current].value
+                #     # index_current += 1
+                #     i = next_non_zero(i+1,including_br=False)
+                #     if not ( i>len(tokens)-1 or tokens[i].kind=='SPACEBR' or tokens[i].value==';' ):
+                #         raise ProcessModuleError(f'import \'module\', and then expected EOD, newline, or semicolon, got "{name.value}"')
+                #     full_import_string = ''.join([tokens[i].value for i in range(index_current,i+1)])
+                #     imported_from_this_global_module = global_imports.get(name,[])
+                #     print(f'[DEBUG-imports]: ({module.path}) captured global module: {name}, with statement: "{full_import_string}"')
+                #     imported_from_this_global_module.append(full_import_string)
+                #     global_imports[name] = imported_from_this_global_module
+                #     index_current = i+1
+                #     continue
+                if classify_module_specifier(name) in (ModuleType.BARE,):
+                    import_module_path = resolve_import('global://',name)
+                else:
+                    import_module_path = resolve_import(module.path,name)
+                imported_module = modules_dicts.get(import_module_path)
                 if not imported_module:
-                    print(f'For DEBUGGING, for reference, modules are:\n\n{modules_dics}')
-                    raise ProcessModuleError(f'Failed to resolve relative import: path = "{name}", resolved path = "{import_module_path}". module object == "{imported_module}"')
+                    raise ProcessModuleError(f'Failed to resolve import: path = "{name}", resolved path = "{import_module_path}", type = "{classify_module_specifier(name)}". module object == "{imported_module}"')
                 source_updated += '\n' + imported_module.name + ';\n\n'
-
+                global_imports
                 i = next_non_zero(i+1,including_br=False)
                 if not ( i>len(tokens)-1 or tokens[i].kind=='SPACEBR' or tokens[i].value==';' ):
                     raise ProcessModuleError(f'import \'./something\', and then expected EOD, newline, or semicolon, got "{name.value}"')
@@ -89,12 +103,12 @@ def process(module,modules_dics):
 
                 i = next_non_zero(i+1)
                 if i>len(tokens)-1:
-                    raise ProcessModuleError(f'Unexpected end of string after "export"')
+                    raise ProcessModuleError(f'Unexpected end of string after "import"')
                 assert tokens[i].value=='from'
                 i += 1
                 i = next_non_zero(i+1)
                 if i>len(tokens)-1:
-                    raise ProcessModuleError(f'Unexpected end of string after "export"')
+                    raise ProcessModuleError(f'Unexpected end of string after "import"')
 
                 assert tokens[i].kind == 'STRING'
                 name_quoted = tokens[i].value.strip()
@@ -102,16 +116,27 @@ def process(module,modules_dics):
                 assert quote in ('\'','"','`',)
                 assert name_quoted[-1]==quote
                 name = name_quoted[1:-1].replace('\\'+quote,quote)
-                if not name.startswith('./') and not name.startswith('../'):
-                    print(f'For DEBUGGING]: path is not relative, skipping') # debug
-                    source_updated += tokens[index_current]
-                    index_current += 1
-                    continue
-                import_module_path = resolve_import(module.path,name)
-                imported_module = modules_dics.get(import_module_path)
+                # # if not name.startswith('./') and not name.startswith('../'):
+                # if classify_module_specifier(name) in (ModuleType.BARE,):
+                #     # source_updated += tokens[index_current].value
+                #     # index_current += 1
+                #     i = next_non_zero(i+1,including_br=False)
+                #     if not ( i>len(tokens)-1 or tokens[i].kind=='SPACEBR' or tokens[i].value==';' ):
+                #         raise ProcessModuleError(f'import \'module\', and then expected EOD, newline, or semicolon, got "{name.value}"')
+                #     full_import_string = ''.join([tokens[i].value for i in range(index_current,i+1)])
+                #     imported_from_this_global_module = global_imports.get(name,[])
+                #     imported_from_this_global_module.append(full_import_string)
+                #     print(f'[DEBUG-imports]: ({module.path}) captured global module: {name}, with statement: "{full_import_string}"')
+                #     global_imports[name] = imported_from_this_global_module
+                #     index_current = i+1
+                #     continue
+                if classify_module_specifier(name) in (ModuleType.BARE,):
+                    import_module_path = resolve_import('global://',name)
+                else:
+                    import_module_path = resolve_import(module.path,name)
+                imported_module = modules_dicts.get(import_module_path)
                 if not imported_module:
-                    print(f'For DEBUGGING, for reference, modules are:\n\n{modules_dics}')
-                    raise ProcessModuleError(f'Failed to resolve relative import: path = "{name}", resolved path = "{import_module_path}". module object == "{imported_module}"')
+                    raise ProcessModuleError(f'Failed to resolve import: path = "{name}", resolved path = "{import_module_path}", type = "{classify_module_specifier(name)}". module object == "{imported_module}"')
 
                 i = next_non_zero(i+1,including_br=False)
                 if not ( i>len(tokens)-1 or tokens[i].kind=='SPACEBR' or tokens[i].value==';' ):
@@ -158,4 +183,14 @@ def process(module,modules_dics):
 
         index_current += 1
 
-    return source_updated
+    global_imports = { name: combine_imports(statements) for name,statements in global_imports.items() }
+    print(f'[DEBUG-imports]: ({module.path}) global imports captured (raw): {repr(global_imports)}')
+    print(f'[DEBUG-imports]: ({module.path}) global imports captured, globally: '+', '.join([name for name in global_imports.keys()]))
+    return '' + ''.join([
+        f'''
+/* module: {module_name} */\n{"".join([
+    f"{statement}\n" for statement in module_statements
+        ])}\n
+''' \
+        for module_name, module_statements in global_imports.items()
+    ]) + source_updated

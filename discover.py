@@ -2,6 +2,7 @@
 import re
 
 from .common_defs import Module, resolve_import
+from .helper_classify_module_type import classify_module_specifier, Type as ModuleType
 
 
 RE_IMPORT_STATEMENT = re.compile(
@@ -16,9 +17,10 @@ def process(file):
 
 
     global_counter = {'counter':0}
-    def get_next_module_name():
+    def get_next_module_name(is_global=False):
         knt = global_counter.get("counter")
-        name = f'module_{knt}'
+        appended = '_global' if is_global else ''
+        name = f'module{appended}_{knt}'
         global_counter['counter'] = knt+1
         return name
 
@@ -44,8 +46,18 @@ def process(file):
         for dep in RE_IMPORT_STATEMENT.finditer(source):
             dep_module = dep.group(1)
             print(f'[DEBUG-discovery]: found: {dep_module}') # debug
-            if not dep_module.startswith('./') and not dep_module.startswith('../'):
-                print(f'[DEBUG-discovery]: path is not relative, skipping') # debug
+            if classify_module_specifier(dep_module) in (ModuleType.BARE,):
+                # raise ErrorNotImplemented('Bare imports: not implemented')
+                dep_module_path = resolve_import('global://',dep_module)
+                dependencies.append(dep_module_path)
+                if dep_module_path not in modules:
+                    modules[dep_module_path] = Module(
+                        path = dep_module_path,
+                        source = dep_module,
+                        name = get_next_module_name(is_global=True),
+                        dependencies = [],
+                        import_order = None,
+                    )
                 continue
             dep_module_path = resolve_import(this_module_path, dep_module)
             print(f'[DEBUG-discovery]: path is: {dep_module_path}') # debug
