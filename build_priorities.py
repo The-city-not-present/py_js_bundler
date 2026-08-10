@@ -24,8 +24,6 @@ def process(modules,starting):
 
     process_module(starting,[])
 
-    print(f'[DEBUG-priorities]: \n\n{"\n".join([str(path)+': \n'+str(modules[path]) for path in modules.keys()])}')
-
     if len(modules)>0:
         all_have_order = True
         for _, module in modules.items():
@@ -37,5 +35,7 @@ def process(modules,starting):
         modules.keys(),
         key = lambda module_path: -modules[module_path].import_order
     )
+
+    print(f'[DEBUG-priorities]: \n\n{"\n".join([str(path)+': \n'+str(modules[path]) for path in modules_sorted])}')
 
     return modules_sorted

@@ -1,8 +1,14 @@
 
 import re
+from pathlib import Path
+import json
 
 
 from .tokenize_js_scripts import process as tokenize_js
+
+
+def detect_module_type(module):
+    return Path(module.path).suffix
 
 
 def make_template(name,source,return_statements):
@@ -24,7 +30,7 @@ class ProcessExportsError(Exception):
     def __init__(self, msg, *args, **kwargs):
         super().__init__(f"Error processing exports: {msg}", *args, **kwargs)
 
-def process(module):
+def process_js(module):
 
     class ProcessModuleError(ProcessExportsError):
         """Raised when exports processing fails."""
@@ -172,3 +178,38 @@ def process(module):
     return_statements = 'return {\n'+''.join([f'    {name},\n' for name in named_exports])+''+(f'    default: {default_exports[0]},\n' if len(default_exports)>0 else '')+'};'
 
     return make_template(module_name,source_updated,return_statements)
+
+
+def process_css(module):
+    scripts = f"""
+var style = document.createElement('style');
+style.textContent = {json.dumps(module.source)};
+document.head.appendChild(style);
+"""
+    return_statements = '\nreturn style;\n';
+    return make_template(module.name,scripts,return_statements)
+
+def process_vue(module):
+    raise ProcessModuleError(f'Can\'t handle extension "{module_type}": not implemented')
+
+
+def process(module):
+
+    class ProcessModuleError(ProcessExportsError):
+        """Raised when exports processing fails."""
+
+        def __init__(self, msg, *args, **kwargs):
+            super().__init__(f'{msg}: in module "{module.path}"', *args, **kwargs)
+
+    module_name = module.name
+    source = module.source
+    module_type = detect_module_type(module)
+
+    if module_type=='.js' or (module_type=='' and f'{module.path}'.startswith('global:')):
+        return process_js(module)
+    elif module_type=='.css':
+        return process_css(module)
+    elif module_type=='.vue':
+        return process_vue(module)
+    else:
+        raise ProcessModuleError(f'Can\'t handle extension "{module_type}": not implemented')
