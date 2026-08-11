@@ -81,8 +81,6 @@ def process(file):
 
         module.dependencies = dependencies
 
-        module.source = f'\n// ===== {this_module_path} =====\n' + module.source
-
         print(f'[DEBUG-discovery]: done with {file}') # debug
 
     discover_modules(file)
