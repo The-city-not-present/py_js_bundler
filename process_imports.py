@@ -183,14 +183,14 @@ def process(module,modules_dicts):
 
         index_current += 1
 
+    # TODO: how is that, "combine_imports" is undefined, but it is working? Highlighted by linter... But is working
+    # maybe current design does not imply that something appears in global_imports dict, maybe it's alyaws emty, and that inner part is never called...
     global_imports = { name: combine_imports(statements) for name,statements in global_imports.items() }
     print(f'[DEBUG-imports]: ({module.path}) global imports captured (raw): {repr(global_imports)}')
     print(f'[DEBUG-imports]: ({module.path}) global imports captured, globally: '+', '.join([name for name in global_imports.keys()]))
-    return '' + ''.join([
-        f'''
-/* module: {module_name} */\n{"".join([
-    f"{statement}\n" for statement in module_statements
-        ])}\n
-''' \
-        for module_name, module_statements in global_imports.items()
-    ]) + source_updated
+    return "".join(
+    f"""/* module: {module_name} */ """
++"".join(f"{statement}\n" for statement in module_statements)+f"""
+"""
+    for module_name, module_statements in global_imports.items()
+) + source_updated

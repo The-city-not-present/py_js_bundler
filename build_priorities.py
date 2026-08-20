@@ -36,6 +36,6 @@ def process(modules,starting):
         key = lambda module_path: -modules[module_path].import_order
     )
 
-    print(f'[DEBUG-priorities]: \n\n{"\n".join([str(path)+': \n'+str(modules[path]) for path in modules_sorted])}')
+    print(f'[DEBUG-priorities]: \n\n'+("\n".join([str(path)+': \n'+str(modules[path]) for path in modules_sorted]))+'')
 
     return modules_sorted
