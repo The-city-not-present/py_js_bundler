@@ -3,6 +3,9 @@
 from dataclasses import dataclass
 from pathlib import Path
 
+
+
+
 @dataclass
 class Module:
     path: Path
@@ -21,7 +24,7 @@ class Module:
 '''
 
 
-def resolve_import(base: Path, target: str):
+def resolve_import(base: Path, target: str|Path) -> Path | str:
     """Based on module name, returns path to file"""
     # if not target.startswith('./') and not target.startswith('../'):
     #     raise RuntimeError(

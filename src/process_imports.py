@@ -1,11 +1,17 @@
 
 import re
-from pathlib import Path
 
 from .common_defs import resolve_import
-from .tokenize_js_scripts import process as tokenize_js
-from .helper_classify_module_type import classify_module_specifier, Type as ModuleType
-
+from .tokenize_js.tokenize import process as tokenize_js
+from .helper_classify_spec_type import (
+    classify_module_specifier,
+    # ModuleSpecifierType,
+    classify_module_specifier_role_for_bundler,
+    ModuleSpecifierBundlerRole,
+    resolve_aliases,
+)
+# classify_module_specifier_role_for_bundler(name, base, module.path, aliases)
+# resolve_aliases(name, base, current_module_path, aliases)
 
 
 
@@ -16,7 +22,30 @@ class ProcessImportsError(Exception):
     def __init__(self, msg, *args, **kwargs):
         super().__init__(f"Error processing imports: {msg}", *args, **kwargs)
 
-def process(module,modules_dicts):
+
+
+def skip_to_next_token_skipping_by_condition(index_current, tokens, check):
+    i = index_current
+    while i < len(tokens) and check(tokens[i]):
+        i += 1
+    return i
+
+def skip_to_next_token_non_zero(index_current, tokens, including_br=True):
+    if including_br:
+        whitespace_token_types = ('SPACE', 'SPACEBR',)
+    else:
+        whitespace_token_types = ('SPACE',)
+    return skip_to_next_token_skipping_by_condition(index_current, tokens, lambda token: token.kind in whitespace_token_types)
+
+
+
+def process(module,modules_dicts,config):
+
+    if not config:
+        config = dict()
+
+    aliases = config.get('aliases',{})
+    project_root = config.get('project_root',None)
 
     class ProcessModuleError(ProcessImportsError):
         """Raised when imports processing fails."""
@@ -36,21 +65,8 @@ def process(module,modules_dicts):
 
         if token.value=='import':
 
-            def next_skipping_by_condition(index_current,check):
-                i = index_current
-                while i<len(tokens) and check(tokens[i]):
-                    i += 1
-                return i
-
-            def next_non_zero(index_current,including_br=True):
-                if including_br:
-                    whitespace_token_types = ('SPACE','SPACEBR',)
-                else:
-                    whitespace_token_types = ('SPACE',)
-                return next_skipping_by_condition(index_current,lambda token: token.kind in whitespace_token_types)
-
             i = index_current
-            i = next_non_zero(i+1)
+            i = skip_to_next_token_non_zero(i+1, tokens)
 
             if i>len(tokens)-1:
                 raise ProcessModuleError(f'Unexpected end of string after "import"')
@@ -62,30 +78,16 @@ def process(module,modules_dicts):
                 assert quote in ('\'','"','`',)
                 assert name_quoted[-1]==quote
                 name = name_quoted[1:-1].replace('\\'+quote,quote)
-                # # if not name.startswith('./') and not name.startswith('../'):
-                # if classify_module_specifier(name) in (ModuleType.BARE,):
-                #     # source_updated += tokens[index_current].value
-                #     # index_current += 1
-                #     i = next_non_zero(i+1,including_br=False)
-                #     if not ( i>len(tokens)-1 or tokens[i].kind=='SPACEBR' or tokens[i].value==';' ):
-                #         raise ProcessModuleError(f'import \'module\', and then expected EOD, newline, or semicolon, got "{name.value}"')
-                #     full_import_string = ''.join([tokens[i].value for i in range(index_current,i+1)])
-                #     imported_from_this_global_module = global_imports.get(name,[])
-                #     print(f'[DEBUG-imports]: ({module.path}) captured global module: {name}, with statement: "{full_import_string}"')
-                #     imported_from_this_global_module.append(full_import_string)
-                #     global_imports[name] = imported_from_this_global_module
-                #     index_current = i+1
-                #     continue
-                if classify_module_specifier(name) in (ModuleType.BARE,):
+                if classify_module_specifier_role_for_bundler(name, project_root, module.path, aliases) not in (ModuleSpecifierBundlerRole.PROCESS,):
                     import_module_path = resolve_import('global://',name)
                 else:
-                    import_module_path = resolve_import(module.path,name)
+                    import_module_path = resolve_import(module.path,resolve_aliases(name, project_root, module.path, aliases))
                 imported_module = modules_dicts.get(import_module_path)
                 if not imported_module:
                     raise ProcessModuleError(f'Failed to resolve import: path = "{name}", resolved path = "{import_module_path}", type = "{classify_module_specifier(name)}". module object == "{imported_module}"')
                 source_updated += '\n' + imported_module.name + ';\n\n'
-                global_imports
-                i = next_non_zero(i+1,including_br=False)
+                # global_imports # TODO: what is this, "global_imports"? What is this line? Please clarify the meaning
+                i = skip_to_next_token_non_zero(i+1, tokens, including_br=False)
                 if not ( i>len(tokens)-1 or tokens[i].kind=='SPACEBR' or tokens[i].value==';' ):
                     raise ProcessModuleError(f'import \'./something\', and then expected EOD, newline, or semicolon, got "{name.value}"')
                 index_current = i+1
@@ -95,18 +97,18 @@ def process(module,modules_dicts):
                 # import aaa, { bbb, ccc } from './lib';
 
                 spec_index_start = i
-                i = next_skipping_by_condition(i,lambda token: not(token.value=='from' and token.kind=='IDENT'))
+                i = skip_to_next_token_skipping_by_condition(i, tokens, lambda token: not(token.value=='from' and token.kind=='IDENT'))
                 spec_index_end = i-1
                 specs = ''
                 for i in range(spec_index_start,spec_index_end+1):
                     specs += tokens[i].value
 
-                i = next_non_zero(i+1)
+                i = skip_to_next_token_non_zero(i+1, tokens)
                 if i>len(tokens)-1:
                     raise ProcessModuleError(f'Unexpected end of string after "import"')
                 assert tokens[i].value=='from'
                 i += 1
-                i = next_non_zero(i+1)
+                i = skip_to_next_token_non_zero(i+1, tokens)
                 if i>len(tokens)-1:
                     raise ProcessModuleError(f'Unexpected end of string after "import"')
 
@@ -116,29 +118,15 @@ def process(module,modules_dicts):
                 assert quote in ('\'','"','`',)
                 assert name_quoted[-1]==quote
                 name = name_quoted[1:-1].replace('\\'+quote,quote)
-                # # if not name.startswith('./') and not name.startswith('../'):
-                # if classify_module_specifier(name) in (ModuleType.BARE,):
-                #     # source_updated += tokens[index_current].value
-                #     # index_current += 1
-                #     i = next_non_zero(i+1,including_br=False)
-                #     if not ( i>len(tokens)-1 or tokens[i].kind=='SPACEBR' or tokens[i].value==';' ):
-                #         raise ProcessModuleError(f'import \'module\', and then expected EOD, newline, or semicolon, got "{name.value}"')
-                #     full_import_string = ''.join([tokens[i].value for i in range(index_current,i+1)])
-                #     imported_from_this_global_module = global_imports.get(name,[])
-                #     imported_from_this_global_module.append(full_import_string)
-                #     print(f'[DEBUG-imports]: ({module.path}) captured global module: {name}, with statement: "{full_import_string}"')
-                #     global_imports[name] = imported_from_this_global_module
-                #     index_current = i+1
-                #     continue
-                if classify_module_specifier(name) in (ModuleType.BARE,):
+                if classify_module_specifier_role_for_bundler(name, project_root, module.path, aliases) not in (ModuleSpecifierBundlerRole.PROCESS,):
                     import_module_path = resolve_import('global://',name)
                 else:
-                    import_module_path = resolve_import(module.path,name)
+                    import_module_path = resolve_import(module.path,resolve_aliases(name, project_root, module.path, aliases))
                 imported_module = modules_dicts.get(import_module_path)
                 if not imported_module:
                     raise ProcessModuleError(f'Failed to resolve import: path = "{name}", resolved path = "{import_module_path}", type = "{classify_module_specifier(name)}". module object == "{imported_module}"')
 
-                i = next_non_zero(i+1,including_br=False)
+                i = skip_to_next_token_non_zero(i+1, tokens, including_br=False)
                 if not ( i>len(tokens)-1 or tokens[i].kind=='SPACEBR' or tokens[i].value==';' ):
                     raise ProcessModuleError(f'import \'./something\', and then expected EOD, newline, or semicolon, got "{name.value}"')
                 index_current = i+1

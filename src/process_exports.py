@@ -4,7 +4,9 @@ from pathlib import Path
 import json
 
 
-from .tokenize_js_scripts import process as tokenize_js
+from .tokenize_js.tokenize import process as tokenize_js
+
+
 
 
 def detect_module_type(module):
@@ -30,7 +32,7 @@ class ProcessExportsError(Exception):
     def __init__(self, msg, *args, **kwargs):
         super().__init__(f"Error processing exports: {msg}", *args, **kwargs)
 
-def process_js(module):
+def process_js(module, config):
 
     class ProcessModuleError(ProcessExportsError):
         """Raised when exports processing fails."""
@@ -180,7 +182,7 @@ def process_js(module):
     return make_template(module_name,source_updated,return_statements)
 
 
-def process_css(module):
+def process_css(module, config):
     scripts = f"""
 var style = document.createElement('style');
 style.textContent = {json.dumps(module.source)};
@@ -189,11 +191,11 @@ document.head.appendChild(style);
     return_statements = '\nreturn style;\n';
     return make_template(module.name,scripts,return_statements)
 
-def process_vue(module):
+def process_vue(module, config):
     raise ProcessModuleError(f'Can\'t handle extension "{module_type}": not implemented')
 
 
-def process(module):
+def process(module, config):
 
     class ProcessModuleError(ProcessExportsError):
         """Raised when exports processing fails."""
@@ -206,10 +208,10 @@ def process(module):
     module_type = detect_module_type(module)
 
     if module_type=='.js' or (module_type=='' and f'{module.path}'.startswith('global:')):
-        return process_js(module)
+        return process_js(module, config)
     elif module_type=='.css':
-        return process_css(module)
+        return process_css(module, config)
     elif module_type=='.vue':
-        return process_vue(module)
+        return process_vue(module, config)
     else:
         raise ProcessModuleError(f'Can\'t handle extension "{module_type}": not implemented')
