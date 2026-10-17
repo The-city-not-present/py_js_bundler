@@ -75,6 +75,26 @@ def test_bundles_bare_import_as_global(tmp_path):
     assert "const { createApp } = module_global_1;" in bundle
 
 
+def test_import_lookalikes_inside_literals_are_ignored(tmp_path):
+    files = {
+        "jsconfig.json": "{}",
+        "src/main.js": (
+            "const t = `\nimport './does_not_exist';\n`;\n"
+            "/*\nimport './also_does_not_exist';\n*/\n"
+            "import './real_dep';\n"
+            "export const ok = 1;\n"
+        ),
+        "src/real_dep.js": "export const dep = 1;\n",
+    }
+
+    # The ``import``-looking text inside the template literal and block comment
+    # must not be resolved (it would raise FileNotFoundError); the real
+    # dependency is still followed and bundled.
+    bundle = _bundle(tmp_path, files)
+
+    assert "dep" in bundle
+
+
 def test_circular_dependency_raises(tmp_path):
     files = {
         "jsconfig.json": "{}",

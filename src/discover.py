@@ -1,21 +1,90 @@
 
-import re
 from pathlib import Path # for type checker only
 
 from .common_defs import Module, resolve_import
 from .helper_classify_spec_type import (
-    classify_module_specifier,
-    ModuleSpecifierType,
     ModuleSpecifierBundlerRole,
     classify_module_specifier_role_for_bundler,
     resolve_aliases,
 )
+from .tokenize_js.tokenize import process as tokenize_js
 
 
-RE_IMPORT_STATEMENT = re.compile(
-    r'^\s*import\s*(?:.+?\s+from\b)?\s*[\'"](.+?)[\'"]\s*?;?\s*$',
-    re.M,
-)
+def _skip_ws(index, tokens):
+    """Skip SPACE / NEWLINE / COMMENT tokens."""
+    while index < len(tokens) and tokens[index].kind in ('SPACE', 'NEWLINE', 'COMMENT'):
+        index += 1
+    return index
+
+
+def _unquote(value):
+    """Strip the surrounding quotes of a string/template token."""
+    quote = value[0]
+    assert quote in ("'", '"', "`")
+    assert value[-1] == quote
+    return value[1:-1].replace('\\' + quote, quote)
+
+
+def _find_from(index, tokens):
+    """Return the index of the ``from`` keyword of a binding import, or None."""
+    n = len(tokens)
+    while index < n:
+        token = tokens[index]
+        if token.kind == 'SEMICOLON':
+            return None
+        if token.kind == 'IDENT' and token.value == 'from':
+            after = _skip_ws(index + 1, tokens)
+            if after < n and tokens[after].kind == 'STRING':
+                return index
+        index += 1
+    return None
+
+
+def extract_import_specifiers(source):
+    """Return the module specifiers of all top-level ``import`` statements.
+
+    Strings, template literals, regular expressions and comments are tokenized
+    as single opaque tokens, so ``import``-looking text inside them is never
+    reported.  Dynamic ``import(...)`` and ``import.meta`` are also ignored.
+    """
+    tokens = tokenize_js(source)
+    specifiers = []
+    n = len(tokens)
+    i = 0
+    while i < n:
+        token = tokens[i]
+        if token.kind != 'IDENT' or token.value != 'import':
+            i += 1
+            continue
+
+        after_import = _skip_ws(i + 1, tokens)
+        if after_import >= n:
+            break
+
+        if tokens[after_import].kind == 'STRING':
+            # import './lib';
+            specifiers.append(_unquote(tokens[after_import].value))
+            i = after_import + 1
+            continue
+
+        if tokens[after_import].kind == 'LPAREN':
+            # import('./lib') — dynamic import, not a static import.
+            i = after_import + 1
+            continue
+
+        # import ... from './lib';
+        from_index = _find_from(after_import, tokens)
+        if from_index is None:
+            i += 1
+            continue
+        specifier_index = _skip_ws(from_index + 1, tokens)
+        if specifier_index < n and tokens[specifier_index].kind == 'STRING':
+            specifiers.append(_unquote(tokens[specifier_index].value))
+            i = specifier_index + 1
+        else:
+            i += 1
+
+    return specifiers
 
 
 def process(file: Path | str, config: None | dict = None):
@@ -54,7 +123,7 @@ def process(file: Path | str, config: None | dict = None):
 
         source = module_path.read_text(encoding='utf-8')
 
-        import_statements_here = [ dep.group(1) for dep in RE_IMPORT_STATEMENT.finditer(source) ]
+        import_statements_here = extract_import_specifiers(source)
         module = Module(
             path = module_path,
             source = source,
