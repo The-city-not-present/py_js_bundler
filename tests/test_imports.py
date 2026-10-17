@@ -52,3 +52,11 @@ def test_import_statement(case):
 def test_malformed_imports_raise(source):
     with pytest.raises(ProcessImportsError):
         bundle_imports(source, _modules())
+
+
+def test_dynamic_import_is_left_untouched():
+    assert bundle_imports("import('./x');", _modules()) == "import('./x');"
+
+
+def test_import_meta_is_left_untouched():
+    assert bundle_imports("import.meta.url;", _modules()) == "import.meta.url;"

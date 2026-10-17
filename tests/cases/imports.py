@@ -36,6 +36,7 @@ def named_imports():
         _case("named_multiple", "import { aaa, bbb } from './lib';", fragments=("const { aaa, bbb } = lib;",)),
         _case("named_trailing_comma", "import { aaa, bbb, } from './lib';", fragments=("const { aaa, bbb, } = lib;",)),
         _case("named_aliased", "import { aaa as bbb } from './lib';", fragments=("const { aaa as bbb } = lib;",)),
+        _case("named_from_binding", "import { from } from './lib';", fragments=("const { from } = lib;",)),
         _case("named_default_as", "import { default as aaa } from './lib';", fragments=("const { default as aaa } = lib;",)),
         _case("named_bare", "import { aaa } from 'vue';", fragments=("const { aaa } = vue_global;",)),
     ]

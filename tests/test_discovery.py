@@ -2,7 +2,7 @@
 
 import pytest
 
-from ..src.discover import extract_import_specifiers
+from ..src.parse_import import extract_import_specifiers
 
 
 @pytest.mark.parametrize(
