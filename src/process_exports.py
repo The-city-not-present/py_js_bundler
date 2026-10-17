@@ -61,10 +61,13 @@ def process_js(module, config):
                 return i
 
             def next_non_zero(index_current,including_br=True):
+                # Skip insignificant tokens (whitespace, line terminators, and
+                # comments) that may appear between the keywords of an export
+                # statement, e.g. ``export /* c */ default function /* c */ () {}``.
                 if including_br:
-                    whitespace_token_types = ('SPACE','NEWLINE',)
+                    whitespace_token_types = ('SPACE','NEWLINE','COMMENT',)
                 else:
-                    whitespace_token_types = ('SPACE',)
+                    whitespace_token_types = ('SPACE','COMMENT',)
                 return next_skipping_by_condition(index_current, lambda token: token.kind in whitespace_token_types)
 
             def next_skip_to_func_after_async(index_current):
@@ -90,14 +93,24 @@ def process_js(module, config):
                     index_current = i
                     if tokens[i].value in ('async',):
                         i = next_skip_to_func_after_async(i+1)
+                    declaration_kw_index = i
                     i = next_non_zero(i+1)
                     if i>len(tokens)-1:
                         raise ProcessModuleError(f'Unexpected end of string after "export"')
                     name = tokens[i]
-                    if name.kind not in ('IDENT',):
+                    if name.kind == 'IDENT':
+                        default_exports.append(name.value)
+                    elif name.kind in ('LPAREN','LBRACE',):
+                        # Anonymous default function/class: synthesize a name so the
+                        # declaration stays valid once ``export default`` is stripped.
+                        default_name = '_default'
+                        default_exports.append(default_name)
+                        source_updated += ''.join(
+                            tokens[k].value for k in range(index_current, declaration_kw_index + 1)
+                        ) + ' ' + default_name
+                        index_current = declaration_kw_index + 1
+                    else:
                         raise ProcessModuleError(f'export... default... function/class/... and then expected an identifier, got "{name.value}"')
-                    name = name.value
-                    default_exports.append(name)
                     continue
                 else:
                     name = tokens[i]
@@ -121,7 +134,8 @@ def process_js(module, config):
                 index_spec_body_end = index_spec_end - 1
                 spec = ''
                 for i in range(index_spec_body_start,index_spec_body_end+1):
-                    spec += tokens[i].value
+                    if tokens[i].kind != 'COMMENT':
+                        spec += tokens[i].value
                 spec_parts = [s.strip() for s in spec.split(',')]
                 for spec_part in spec_parts:
                     spec_name, spec_alias = None, None

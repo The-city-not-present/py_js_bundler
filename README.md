@@ -123,6 +123,8 @@ default.
 - `export const aaa = ...`, `export let ...`, `export var ...`
 - `export default function aaa() {}`, `export default async function ...`,
   `export default class Aaa {}`
+- anonymous default exports: `export default function() {}`,
+  `export default async function() {}`, `export default class {}`
 - `export default aaa;` (a declared identifier), `export default 42;`
 - `export { aaa }`, `export { aaa, bbb }`, `export { aaa as bbb }`,
   `export { aaa as default }`
@@ -149,7 +151,6 @@ simple parsing rather than a full JavaScript parser. Unsupported-but-valid
 JavaScript fails loudly rather than silently mis-bundling. Known gaps today:
 
 - generator functions: `export function* aaa() {}`, `export async function* ...`
-- anonymous default exports: `export default function() {}`, `export default class {}`
 - expression defaults: `export default { ... }`, `export default [ ... ]`,
   `export default ( ... )`
 - multiple declarators: `export const a = 1, b = 2;` (only `a` is exported)

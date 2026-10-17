@@ -62,11 +62,11 @@ def default_exports():
     templates = [
         ("function", "export default function aaa() {}", "pass", ""),
         ("async_function", "export default async function aaa() {}", "pass", ""),
-        ("anonymous_function", "export default function() {}", "xfail", "anonymous default function not supported"),
-        ("anonymous_async_function", "export default async function() {}", "xfail", "anonymous default async function not supported"),
+        ("anonymous_function", "export default function() {}", "pass", ""),
+        ("anonymous_async_function", "export default async function() {}", "pass", ""),
         ("generator_function", "export default function* aaa() {}", "xfail", "generator default function not supported"),
         ("class", "export default class Aaa {}", "pass", ""),
-        ("anonymous_class", "export default class {}", "xfail", "anonymous default class not supported"),
+        ("anonymous_class", "export default class {}", "pass", ""),
         ("identifier_after_function", "function aaa() {}; export default aaa;", "pass", ""),
         ("identifier_after_const", "const aaa = 1; export default aaa;", "pass", ""),
         ("numeric_literal", "export default 42;", "pass", ""),
@@ -109,4 +109,20 @@ def re_exports():
     ]
 
 
-EXPORT_CASES = named_declarations() + default_exports() + explicit_exports() + re_exports()
+def comment_variants():
+    """Comments and other insignificant tokens inside ``export`` statements."""
+    return [
+        _case("comment_between_export_and_default", "export /* c */ default function aaa() {}", expected=("default",)),
+        _case("comment_between_default_and_function", "export default /* c */ function aaa() {}", expected=("default",)),
+        _case("comment_before_named_function", "export default function /* c */ aaa() {}", expected=("default",)),
+        _case("comment_before_anonymous_function", "export default function /* c */ () {}", expected=("default",)),
+        _case("line_comment_before_anonymous_function", "export default function // c\n() {}", expected=("default",)),
+        _case("comment_before_anonymous_class", "export default class /* c */ {}", expected=("default",)),
+        _case("comment_before_async_anonymous", "export default async /* c */ function () {}", expected=("default",)),
+        _case("comment_in_named_declaration", "export function /* c */ aaa() {}", expected=("aaa",)),
+        _case("comment_before_number_default", "export default /* c */ 42;", expected=("default",)),
+        _case("comment_in_explicit_list", "const aaa = 1, bbb = 2; export { aaa, /* c */ bbb };", expected=("aaa", "bbb")),
+    ]
+
+
+EXPORT_CASES = named_declarations() + default_exports() + explicit_exports() + re_exports() + comment_variants()
