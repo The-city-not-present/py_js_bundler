@@ -27,6 +27,7 @@ def test_export_statement(case):
         "export default;",
         "export default function;",
         "export { aaa;",
+        "export { aaa } junk",
     ],
 )
 def test_malformed_exports_raise(source):

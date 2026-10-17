@@ -2,6 +2,7 @@
 
 - **Development tests** (verify program functionality). These live in `tests/` and are **not** included in the final bundle.
 - `tests-real-sensitive-data/` is a typical folder for test files that should not be commited - real tests with sensitive data, or temporary personal test files that should not be commited.
+- A working example: I can give you a working example: js files are here `/Users/andrej/work/gitgui/src/frontend/app_js`, target, the bundle, is here: `/Users/andrej/work/gitgui/src/frontend/GENERATED/app.js`, the script that makes the bundle is `/Users/andrej/work/gitgui/build.sh` that calls `"$pythonexecutable" build_templates.py --program build --resource app_js --dest src/frontend/GENERATED` that calls `/Users/andrej/work/gitgui/build_templates.py` that calls `build_app_js()` that calls this project here.
 
 ## Running the tests
 
