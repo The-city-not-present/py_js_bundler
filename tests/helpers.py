@@ -21,6 +21,7 @@ import pytest
 from ..src.common_defs import Module
 from ..src.process_exports import process_js
 from ..src.process_imports import process as process_imports
+from ..src.tokenize_js.tokenize import Token, TokenizeError, process as tokenize_js
 
 
 DEFAULT_MODULE_NAME = "module_0"
@@ -56,6 +57,11 @@ def bundle_imports(source, modules, *, name=DEFAULT_MODULE_NAME, path=None, conf
         "aliases": [],
     }
     return process_imports(make_module(source, name=name, path=path), modules, config)
+
+
+def tokenize(source):
+    """Tokenize a JavaScript source string (losslessly)."""
+    return tokenize_js(source)
 
 
 def extract_return_keys(output: str) -> tuple[str, ...]:
@@ -114,6 +120,18 @@ class ImportCase:
     expected_fragments: tuple[str, ...] = ()
     # Whether the bundler must strip the ``import`` keyword from the body.
     strip_import: bool = True
+
+
+@dataclass(frozen=True)
+class TokenizeCase:
+    """One tokenizer input, with its expected token sequence."""
+
+    id: str
+    source: str
+    # Expected ``(kind, value)`` pairs, when the input is valid.
+    expected: tuple[tuple[str, str], ...] = ()
+    # When True, tokenizing must raise :class:`TokenizeError`.
+    error: bool = False
 
 
 def as_pytest_params(cases):

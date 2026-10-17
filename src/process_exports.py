@@ -62,14 +62,14 @@ def process_js(module, config):
 
             def next_non_zero(index_current,including_br=True):
                 if including_br:
-                    whitespace_token_types = ('SPACE','SPACEBR',)
+                    whitespace_token_types = ('SPACE','NEWLINE',)
                 else:
                     whitespace_token_types = ('SPACE',)
                 return next_skipping_by_condition(index_current, lambda token: token.kind in whitespace_token_types)
 
             def next_skip_to_func_after_async(index_current):
                 i = index_current
-                i = next_skipping_by_condition(index_current, lambda token: token.kind in ('SPACE','SPACEBR','COMMENT',))
+                i = next_skipping_by_condition(index_current, lambda token: token.kind in ('SPACE','NEWLINE','COMMENT',))
                 if i>len(tokens)-1:
                     raise ProcessModuleError(f'Unexpected end of string: expected "function" after "async"')
                 if tokens[i].value=='function':
@@ -101,12 +101,12 @@ def process_js(module, config):
                     continue
                 else:
                     name = tokens[i]
-                    if name.kind not in ('IDENT','NUM',):
+                    if name.kind not in ('IDENT','NUMBER',):
                         raise ProcessModuleError(f'export... default... and then expected an identifier, got "{name.value}" ({name.kind})')
                     name = name.value
                     default_exports.append(name)
                     i = next_non_zero(i+1,including_br=False)
-                    if not ( i>len(tokens)-1 or tokens[i].kind=='SPACEBR' or tokens[i].value==';' ):
+                    if not ( i>len(tokens)-1 or tokens[i].kind=='NEWLINE' or tokens[i].value==';' ):
                         raise ProcessModuleError(f'export default IDENT, and then expected EOD, newline, or semicolon, got "{name}"')
                     index_current = i+1
                     continue
@@ -141,7 +141,7 @@ def process_js(module, config):
                     else:
                         exports.append(f'{spec_alias}: {spec_name}')
                 i = next_non_zero(index_spec_end+1,including_br=False)
-                if not ( i>len(tokens)-1 or tokens[i].kind=='SPACEBR' or tokens[i].value==';' ):
+                if not ( i>len(tokens)-1 or tokens[i].kind=='NEWLINE' or tokens[i].value==';' ):
                     raise ProcessModuleError(f'export {{ aaa, bbb }}, and then expected EOD, newline, or semicolon, got "{name.value}"')
                 index_current = i+1
                 explicit_exports.append(exports)

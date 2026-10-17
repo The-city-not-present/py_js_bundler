@@ -32,7 +32,7 @@ def skip_to_next_token_skipping_by_condition(index_current, tokens, check):
 
 def skip_to_next_token_non_zero(index_current, tokens, including_br=True):
     if including_br:
-        whitespace_token_types = ('SPACE', 'SPACEBR',)
+        whitespace_token_types = ('SPACE', 'NEWLINE',)
     else:
         whitespace_token_types = ('SPACE',)
     return skip_to_next_token_skipping_by_condition(index_current, tokens, lambda token: token.kind in whitespace_token_types)
@@ -88,7 +88,7 @@ def process(module,modules_dicts,config):
                 source_updated += '\n' + imported_module.name + ';\n\n'
                 # global_imports # TODO: what is this, "global_imports"? What is this line? Please clarify the meaning
                 i = skip_to_next_token_non_zero(i+1, tokens, including_br=False)
-                if not ( i>len(tokens)-1 or tokens[i].kind=='SPACEBR' or tokens[i].value==';' ):
+                if not ( i>len(tokens)-1 or tokens[i].kind=='NEWLINE' or tokens[i].value==';' ):
                     raise ProcessModuleError(f'import \'./something\', and then expected EOD, newline, or semicolon, got "{name.value}"')
                 index_current = i+1
                 continue
@@ -127,7 +127,7 @@ def process(module,modules_dicts,config):
                     raise ProcessModuleError(f'Failed to resolve import: path = "{name}", resolved path = "{import_module_path}", type = "{classify_module_specifier(name)}". module object == "{imported_module}"')
 
                 i = skip_to_next_token_non_zero(i+1, tokens, including_br=False)
-                if not ( i>len(tokens)-1 or tokens[i].kind=='SPACEBR' or tokens[i].value==';' ):
+                if not ( i>len(tokens)-1 or tokens[i].kind=='NEWLINE' or tokens[i].value==';' ):
                     raise ProcessModuleError(f'import \'./something\', and then expected EOD, newline, or semicolon, got "{name.value}"')
                 index_current = i+1
 
