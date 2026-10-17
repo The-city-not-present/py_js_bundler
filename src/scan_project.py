@@ -8,13 +8,8 @@ from collections.abc import (
     # Sequence,
     # Callable,
 )
-import sys # for error reporting
 
-
-# STDOUT_COLOR_RED = "\033[91m"
-STDOUT_COLOR_RED = "\033[31m"
-STDOUT_COLOR_RESET = "\033[0m"
-STDOUT_COLOR_GREEN = "\033[32m"
+from .log import logger
 
 
 
@@ -40,16 +35,11 @@ def parse_jsconfig_json(filename:Path,existing_config:dict) -> dict:
                             for path_resolution_candidate in path_resolution_value:
                                 result['aliases'].append((path_spec, path_resolution_candidate,))
                     except Exception as e:
-                        print(
-                            f'{STDOUT_COLOR_RED}PYJSBUNDLER: Warning: parse {filename} config: failed to parse compilerOptions.paths section\n{e}{STDOUT_COLOR_RESET}',
-                            file=sys.stderr)
-                        pass
+                        logger.warning('PYJSBUNDLER: Warning: parse %s config: failed to parse compilerOptions.paths section\n%s', filename, e)
             except Exception as e:
-                print(f'{STDOUT_COLOR_RED}PYJSBUNDLER: Warning: parse {filename} config: failed to parse compilerOptions.paths section\n{e}{STDOUT_COLOR_RESET}', file=sys.stderr)
-                pass
+                logger.warning('PYJSBUNDLER: Warning: parse %s config: failed to parse compilerOptions.paths section\n%s', filename, e)
     except Exception as e:
-        print(f'{STDOUT_COLOR_RED}PYJSBUNDLER: Warning: parse {filename} config: failed to parse compilerOptions section\n{e}{STDOUT_COLOR_RESET}', file=sys.stderr)
-        pass
+        logger.warning('PYJSBUNDLER: Warning: parse %s config: failed to parse compilerOptions section\n%s', filename, e)
     return result
 
 def parse_tsconfig_json(filename:Path,existing_config:dict) -> dict:

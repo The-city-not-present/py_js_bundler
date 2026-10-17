@@ -1,5 +1,8 @@
 
 
+from .log import logger
+
+
 class ErrorCircularDependency(Exception):
     """Raised on circular dependency"""
 
@@ -36,6 +39,6 @@ def process(modules,starting):
         key = lambda module_path: -modules[module_path].import_order
     )
 
-    print(f'[DEBUG-priorities]: \n\n'+("\n".join([str(path)+': \n'+str(modules[path]) for path in modules_sorted]))+'')
+    logger.debug('[DEBUG-priorities]: \n\n%s', "\n".join(str(path)+': \n'+str(modules[path]) for path in modules_sorted))
 
     return modules_sorted

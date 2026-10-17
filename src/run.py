@@ -10,6 +10,7 @@ from .process_imports import process as process_imports
 from .process_exports import process as process_exports
 from .process_global_imports import process as process_create_scritps_global_imports
 from .helper_classify_spec_type import classify_module_specifier, ModuleSpecifierType as ModuleType
+from .log import configure
 
 
 
@@ -19,6 +20,9 @@ def process( starting_file, config: dict|None = None ) -> str:
     starting_file = Path(starting_file).resolve()
 
     config = autodetect_project_config( starting_file, config )
+
+    if config.get('verbosity') is not None:
+        configure( config['verbosity'] )
 
     modules = discover_modules( starting_file, config )
 

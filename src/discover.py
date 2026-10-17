@@ -8,6 +8,7 @@ from .helper_classify_spec_type import (
     resolve_aliases,
 )
 from .parse_import import extract_import_specifiers
+from .log import logger
 
 
 def process(file: Path | str, config: None | dict = None):
@@ -36,10 +37,10 @@ def process(file: Path | str, config: None | dict = None):
 
         module_path = module_path.resolve()
 
-        print(f'[DEBUG-discovery]: inspecting module: {module_path}') # debug
+        logger.debug('[DEBUG-discovery]: inspecting module: %s', module_path)
 
         if module_path in modules:
-            print(f'[DEBUG-discovery]: already loaded, skip') # debug
+            logger.debug('[DEBUG-discovery]: already loaded, skip')
             return
 
         module_name = get_next_module_name()
@@ -56,10 +57,10 @@ def process(file: Path | str, config: None | dict = None):
         )
         modules[module_path] = module
 
-        print(f'[DEBUG-discovery]: inspecting children') # debug
+        logger.debug('[DEBUG-discovery]: inspecting children')
         dependencies = []
         for dependency_module_spec in import_statements_here:
-            print(f'[DEBUG-discovery]: found: {dependency_module_spec}') # debug
+            logger.debug('[DEBUG-discovery]: found: %s', dependency_module_spec)
             #if classify_module_specifier(dependency_module_spec) in (ModuleSpecifierType.BARE,):
             if classify_module_specifier_role_for_bundler(dependency_module_spec, project_root, module_path, aliases) not in (ModuleSpecifierBundlerRole.PROCESS,):
                 # raise ErrorNotImplemented('Bare imports: not implemented')
@@ -75,9 +76,9 @@ def process(file: Path | str, config: None | dict = None):
                     )
                 continue
             dep_module_path = resolve_import(module_path, resolve_aliases(dependency_module_spec, project_root, module.path, aliases))
-            print(f'[DEBUG-discovery]: path is: {dep_module_path}') # debug
+            logger.debug('[DEBUG-discovery]: path is: %s', dep_module_path)
             dependencies.append(dep_module_path)
-            print(f'[DEBUG-discovery]: call recursively for {dep_module_path}') # debug
+            logger.debug('[DEBUG-discovery]: call recursively for %s', dep_module_path)
 
         for dependency_module_spec in import_statements_here:
             # if classify_module_specifier(dependency_module_spec) in (ModuleSpecifierType.BARE,):
@@ -88,7 +89,7 @@ def process(file: Path | str, config: None | dict = None):
 
         module.dependencies = dependencies
 
-        print(f'[DEBUG-discovery]: done with {module_path}') # debug
+        logger.debug('[DEBUG-discovery]: done with %s', module_path)
 
     discover_modules(file)
 

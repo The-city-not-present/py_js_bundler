@@ -4,6 +4,7 @@ import re
 from .common_defs import resolve_import
 from .tokenize_js.tokenize import process as tokenize_js
 from .parse_import import ImportParseError, parse_import_statement
+from .log import logger
 from .helper_classify_spec_type import (
     classify_module_specifier,
     # ModuleSpecifierType,
@@ -121,8 +122,8 @@ def process(module,modules_dicts,config):
     # TODO: how is that, "combine_imports" is undefined, but it is working? Highlighted by linter... But is working
     # maybe current design does not imply that something appears in global_imports dict, maybe it's alyaws emty, and that inner part is never called...
     global_imports = { name: combine_imports(statements) for name,statements in global_imports.items() }
-    print(f'[DEBUG-imports]: ({module.path}) global imports captured (raw): {repr(global_imports)}')
-    print(f'[DEBUG-imports]: ({module.path}) global imports captured, globally: '+', '.join([name for name in global_imports.keys()]))
+    logger.debug('[DEBUG-imports]: (%s) global imports captured (raw): %r', module.path, global_imports)
+    logger.debug('[DEBUG-imports]: (%s) global imports captured, globally: %s', module.path, ', '.join(global_imports.keys()))
     return "".join(
     f"""/* module: {module_name} */ """
 +"".join(f"{statement}\n" for statement in module_statements)+f"""
