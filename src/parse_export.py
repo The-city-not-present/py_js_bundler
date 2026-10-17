@@ -13,6 +13,8 @@ than growing more token-walking code in ``process_exports``.
 import re
 from dataclasses import dataclass
 
+from .helper_token_utils import skip_insignificant, skip_while, statement_end
+
 
 class ExportParseError(Exception):
     """Raised when an ``export`` statement cannot be parsed."""
@@ -33,19 +35,6 @@ class ExportStatement:
     prefix: str = ''
 
 
-def _skip_while(tokens, index, predicate):
-    """Advance ``index`` while ``predicate(token)`` holds."""
-    while index < len(tokens) and predicate(tokens[index]):
-        index += 1
-    return index
-
-
-def _skip_insignificant(tokens, index, *, include_newlines=True):
-    """Skip whitespace, comments, and (optionally) newlines."""
-    kinds = ('SPACE', 'NEWLINE', 'COMMENT') if include_newlines else ('SPACE', 'COMMENT')
-    return _skip_while(tokens, index, lambda token: token.kind in kinds)
-
-
 def _declaration_keyword_index(tokens, index):
     """Return the declaration keyword index, advancing ``async`` to ``function``.
 
@@ -53,7 +42,7 @@ def _declaration_keyword_index(tokens, index):
     ``var`` / ``let``.  Returns None if ``async`` is not followed by ``function``.
     """
     if tokens[index].value == 'async':
-        index = _skip_insignificant(tokens, index + 1)
+        index = skip_insignificant(tokens, index + 1)
         if index < len(tokens) and tokens[index].value == 'function':
             return index
         return None
@@ -68,26 +57,11 @@ def _declaration_name_index(tokens, index):
     optional generator ``*`` (or None).
     """
     star_index = None
-    name_index = _skip_insignificant(tokens, index)
+    name_index = skip_insignificant(tokens, index)
     if name_index < len(tokens) and tokens[name_index].value == '*':
         star_index = name_index
-        name_index = _skip_insignificant(tokens, name_index + 1)
+        name_index = skip_insignificant(tokens, name_index + 1)
     return name_index, star_index
-
-
-def _statement_end(tokens, index):
-    """Return the index just past the statement terminator after ``index``.
-
-    Skips horizontal whitespace and comments, then returns the index just past
-    the ``;`` or newline, or ``len(tokens)`` at end of input, or None if the
-    statement is not properly terminated.
-    """
-    index = _skip_insignificant(tokens, index, include_newlines=False)
-    if index >= len(tokens):
-        return index
-    if tokens[index].kind in ('SEMICOLON', 'NEWLINE'):
-        return index + 1
-    return None
 
 
 def parse_export_statement(tokens, start):
@@ -95,7 +69,7 @@ def parse_export_statement(tokens, start):
 
     ``start`` must point at an ``export`` identifier token.
     """
-    i = _skip_insignificant(tokens, start + 1)
+    i = skip_insignificant(tokens, start + 1)
     if i >= len(tokens):
         raise ExportParseError('Unexpected end of string after "export"')
 
@@ -126,7 +100,7 @@ def _parse_named_export(tokens, i):
 
 def _parse_default_export(tokens, i):
     # ``i`` points at ``default``.
-    j = _skip_insignificant(tokens, i + 1)
+    j = skip_insignificant(tokens, i + 1)
     if j >= len(tokens):
         raise ExportParseError('Unexpected end of string after "export"')
 
@@ -156,17 +130,17 @@ def _parse_default_export(tokens, i):
     name = tokens[j]
     if name.kind not in ('IDENT', 'NUMBER'):
         raise ExportParseError(f'export... default... and then expected an identifier, got "{name.value}" ({name.kind})')
-    statement_end = _statement_end(tokens, j + 1)
-    if statement_end is None:
+    end = statement_end(tokens, j + 1)
+    if end is None:
         raise ExportParseError(f'export default IDENT, and then expected EOD, newline, or semicolon, got "{name.value}"')
-    return ExportStatement(kind='default', names=(name.value,), resume_index=statement_end)
+    return ExportStatement(kind='default', names=(name.value,), resume_index=end)
 
 
 def _parse_explicit_export(tokens, i):
     # ``i`` points at ``{``.
     names = []
-    body_start = _skip_insignificant(tokens, i + 1)
-    end = _skip_while(tokens, body_start, lambda token: token.value != '}')
+    body_start = skip_insignificant(tokens, i + 1)
+    end = skip_while(tokens, body_start, lambda token: token.value != '}')
     body_end = end - 1
     spec = ''
     for k in range(body_start, body_end + 1):
@@ -186,8 +160,8 @@ def _parse_explicit_export(tokens, i):
             else:
                 raise ExportParseError(f'Unexpected syntax within export {{ ... }} : "{spec}"')
         names.append(f'{alias}: {name}' if alias else name)
-    statement_end = _statement_end(tokens, end + 1)
-    if statement_end is None:
+    end = statement_end(tokens, end + 1)
+    if end is None:
         raise ExportParseError('export { ... }, and then expected EOD, newline, or semicolon')
-    return ExportStatement(kind='explicit', names=tuple(names), resume_index=statement_end)
+    return ExportStatement(kind='explicit', names=tuple(names), resume_index=end)
 

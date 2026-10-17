@@ -14,6 +14,7 @@ so that logic lives here in one place.
 from dataclasses import dataclass
 
 from .tokenize_js.tokenize import process as tokenize_js
+from .helper_token_utils import skip_insignificant, statement_end, unquote
 
 
 class ImportParseError(Exception):
@@ -29,20 +30,6 @@ class ImportStatement:
     bindings: str | None  # binding clause text for binding imports, else None
 
 
-def _skip_ws(tokens, index):
-    """Skip SPACE / NEWLINE / COMMENT tokens."""
-    while index < len(tokens) and tokens[index].kind in ('SPACE', 'NEWLINE', 'COMMENT'):
-        index += 1
-    return index
-
-
-def _unquote(value):
-    quote = value[0]
-    assert quote in ("'", '"', "`")
-    assert value[-1] == quote
-    return value[1:-1].replace('\\' + quote, quote)
-
-
 def _find_from(tokens, index):
     """Return the index of the ``from`` keyword of a binding import, or None.
 
@@ -55,23 +42,19 @@ def _find_from(tokens, index):
         if token.kind == 'SEMICOLON':
             return None
         if token.kind == 'IDENT' and token.value == 'from':
-            after = _skip_ws(tokens, index + 1)
+            after = skip_insignificant(tokens, index + 1)
             if after < n and tokens[after].kind == 'STRING':
                 return index
         index += 1
     return None
 
 
-def _statement_end(tokens, string_index):
-    """Return the index just past the terminator following a specifier string."""
-    index = string_index + 1
-    while index < len(tokens) and tokens[index].kind == 'SPACE':
-        index += 1
-    if index >= len(tokens):
-        return index
-    if tokens[index].kind in ('SEMICOLON', 'NEWLINE'):
-        return index + 1
-    raise ImportParseError('expected ";" or newline after import statement')
+def _statement_end(tokens, index):
+    """Return the index just past the import statement terminator."""
+    end = statement_end(tokens, index)
+    if end is None:
+        raise ImportParseError('expected ";" or newline after import statement')
+    return end
 
 
 def parse_import_statement(tokens, start):
@@ -83,7 +66,7 @@ def parse_import_statement(tokens, start):
     malformed input.
     """
     n = len(tokens)
-    after_import = _skip_ws(tokens, start + 1)
+    after_import = skip_insignificant(tokens, start + 1)
     if after_import >= n:
         raise ImportParseError('unexpected end of input after "import"')
 
@@ -91,8 +74,8 @@ def parse_import_statement(tokens, start):
 
     if first.kind == 'STRING':
         # import './lib';
-        specifier = _unquote(first.value)
-        end = _statement_end(tokens, after_import)
+        specifier = unquote(first.value)
+        end = _statement_end(tokens, after_import + 1)
         return ImportStatement(
             start=start,
             end=end,
@@ -109,13 +92,13 @@ def parse_import_statement(tokens, start):
     from_index = _find_from(tokens, after_import)
     if from_index is None:
         raise ImportParseError('expected "from" in import statement')
-    specifier_index = _skip_ws(tokens, from_index + 1)
+    specifier_index = skip_insignificant(tokens, from_index + 1)
     if specifier_index >= n or tokens[specifier_index].kind != 'STRING':
         raise ImportParseError('expected module specifier string after "from"')
 
     bindings = ''.join(token.value for token in tokens[after_import:from_index])
-    specifier = _unquote(tokens[specifier_index].value)
-    end = _statement_end(tokens, specifier_index)
+    specifier = unquote(tokens[specifier_index].value)
+    end = _statement_end(tokens, specifier_index + 1)
     return ImportStatement(
         start=start,
         end=end,
